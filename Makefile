@@ -54,7 +54,8 @@ build/aws-stack.yml:
 # -----------------------------------------
 # AMI creation with Packer
 
-packer: packer-linux.output packer-windows.output
+packer: packer-linux.output
+# packer-windows.output
 
 build/mappings.yml: build/linux-ami.txt build/windows-ami.txt
 	mkdir -p build
