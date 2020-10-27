@@ -1,7 +1,7 @@
 #!/bin/bash
 set -eu -o pipefail
 
-NODE_VERSION=12.17.0
+NODE_VERSION=12.19.0
 YARN_VERSION=1.13.0
 
 # This performs a manual install of Node.
