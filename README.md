@@ -80,6 +80,7 @@ The following s3 objects are downloaded and processed:
 * `/{pipeline-slug}/env` - An [agent environment hook](https://buildkite.com/docs/agent/hooks), specific to a pipeline
 * `/{pipeline-slug}/private_ssh_key` - A private key that is added to ssh-agent for your builds, specific to the pipeline
 * `/{pipeline-slug}/git-credentials` - A [git-credentials](https://git-scm.com/docs/git-credential-store#_storage_format) file for git over https, specific to a pipeline
+* When provided, the environment variable `BUILDKITE_PLUGIN_S3_SECRETS_BUCKET_PREFIX` will overwrite `{pipeline-slug}`
 
 These files are encrypted using [Amazon's KMS Service](https://aws.amazon.com/kms/). See the [Security](#security) section for more details.
 
@@ -108,9 +109,9 @@ If you really want to store your secrets unencrypted, you can disable it entirel
 ## What’s On Each Machine?
 
 * [Amazon Linux 2 LTS](https://aws.amazon.com/amazon-linux-2/)
-* [Buildkite Agent v3.21.1](https://buildkite.com/docs/agent)
-* [Docker 19.03.5](https://www.docker.com)
-* [Docker Compose 1.25.1](https://docs.docker.com/compose/)
+* [Buildkite Agent v3.26.0](https://buildkite.com/docs/agent)
+* [Docker](https://www.docker.com) - 19.03.13 (Linux) and 19.03.12 (Windows)
+* [Docker Compose](https://docs.docker.com/compose/) - 1.27.4 (Linux) and 1.27.2 (Windows)
 * [aws-cli](https://aws.amazon.com/cli/) - useful for performing any ops-related tasks
 * [jq](https://stedolan.github.io/jq/) - useful for manipulating JSON responses from cli tools such as aws-cli or the Buildkite API
 
@@ -145,8 +146,6 @@ Metrics are collected with a Lambda function, polling every minute based on the 
 ## Terminating the instance after job is complete
 
 You may set `BuildkiteTerminateInstanceAfterJob` to `true` to force the instance to terminate after it completes a job. Setting this value to `true` tells the stack to enable `disconnect-after-job` in the `buildkite-agent.cfg` file.
-
-While not enforced, it is highly recommended you also set your `AgentsPerInstance` value to `1`.
 
 We strongly encourage you to find an alternative to this setting if at all possible. The turn around time for replacing these instances is currently slow (5-10 minutes depending on other stack configuration settings). If you need single use jobs, we suggest looking at our container plugins like `docker`, `docker-compose`, and `ecs`, all which can be found [here](https://buildkite.com/plugins).
 
@@ -188,7 +187,7 @@ Metrics are calculated every minute from the Buildkite API using a lambda functi
 
 <img width="544" alt="cloudwatch" src="https://cloud.githubusercontent.com/assets/153/16836158/85abdbc6-49ff-11e6-814c-eaf2400e8333.png">
 
-You’ll find the stack’s metrics under "Custom Metrics > Buildkite" within CloudWatch.
+You’ll find the stack’s metrics under "Custom Namespaces > Buildkite" within CloudWatch.
 
 ## Reading Instance and Agent Logs
 
@@ -273,10 +272,14 @@ Also keep in mind the EC2 HTTP metadata server is available from within builds, 
 To get started with customizing your own stack, or contributing fixes and features:
 
 ```bash
-# Build all AMIs
+# Checkout all submodules
+git submodule update --init --recursive
+
+# Build all AMIs and render a cloud formation template - this requires AWS credentials (in the ENV)
+# to build an AMI with packer
 make build
 
-# Or, to set things up locally and create the stack on AWS
+# To create a new stack on AWS using the local template
 make create-stack
 
 # You can use any of the AWS* environment variables that the aws-cli supports

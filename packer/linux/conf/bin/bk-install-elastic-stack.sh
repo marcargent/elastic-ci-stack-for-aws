@@ -63,9 +63,14 @@ export BUILDKITE_ECR_POLICY=${BUILDKITE_ECR_POLICY:-none}
 EOF
 
 if [[ "${BUILDKITE_AGENT_RELEASE}" == "edge" ]] ; then
+	if [[ "$(uname -m)" == "aarch64" ]] ; then
+	  AGENT_ARCH="arm64"
+	else
+	  AGENT_ARCH="amd64"
+	fi
 	echo "Downloading buildkite-agent edge..."
 	curl -Lsf -o /usr/bin/buildkite-agent-edge \
-		"https://download.buildkite.com/agent/experimental/latest/buildkite-agent-linux-amd64"
+		"https://download.buildkite.com/agent/experimental/latest/buildkite-agent-linux-${AGENT_ARCH}"
 	chmod +x /usr/bin/buildkite-agent-edge
 	buildkite-agent-edge --version
 fi
@@ -91,13 +96,16 @@ if [[ -n "${BUILDKITE_AGENT_TAGS:-}" ]] ; then
 	agent_metadata=("${agent_metadata[@]}" "${extra_agent_metadata[@]}")
 fi
 
-# Enable git mirrors
+# Enable git-mirrors
 if [[ "${BUILDKITE_AGENT_ENABLE_GIT_MIRRORS_EXPERIMENT}" == "true" ]] ; then
   if [[ -z "$BUILDKITE_AGENT_EXPERIMENTS" ]] ; then
     BUILDKITE_AGENT_EXPERIMENTS="git-mirrors"
   else
     BUILDKITE_AGENT_EXPERIMENTS+=",git-mirrors"
   fi
+  BUILDKITE_AGENT_GIT_MIRRORS_PATH="/var/lib/buildkite-agent/git-mirrors"
+else
+  BUILDKITE_AGENT_GIT_MIRRORS_PATH=""
 fi
 
 # If the agent token path is set, use that instead of BUILDKITE_AGENT_TOKEN
@@ -111,11 +119,12 @@ token="${BUILDKITE_AGENT_TOKEN}"
 tags=$(IFS=, ; echo "${agent_metadata[*]}")
 tags-from-ec2=true
 tags-from-host=true
+tags-from-ec2-meta-data=true
 timestamp-lines=${BUILDKITE_AGENT_TIMESTAMP_LINES}
 hooks-path=/etc/buildkite-agent/hooks
 build-path=/var/lib/buildkite-agent/builds
 plugins-path=/var/lib/buildkite-agent/plugins
-git-mirrors-path=/var/lib/buildkite-agent/git-mirrors
+git-mirrors-path="${BUILDKITE_AGENT_GIT_MIRRORS_PATH}"
 experiment="${BUILDKITE_AGENT_EXPERIMENTS}"
 priority=%n
 spawn=${BUILDKITE_AGENTS_PER_INSTANCE}
