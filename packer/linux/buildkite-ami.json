@@ -66,6 +66,18 @@
       "type": "shell",
       "script": "scripts/install-git-lfs.sh"
     },
+	    {
+      "type": "shell",
+      "script": "scripts/install-secrets-manager-hooks.sh"
+    },
+    {
+      "type": "shell",
+      "script": "scripts/install-node.sh"
+    },
+    {
+      "type": "shell",
+      "script": "scripts/install-adoptopenjdk.sh"
+    },
     {
       "type": "shell",
       "inline": [
