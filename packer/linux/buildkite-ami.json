@@ -80,10 +80,6 @@
     },
     {
       "type": "shell",
-      "script": "scripts/install-secrets-manager-hooks.sh"
-    },
-    {
-      "type": "shell",
       "script": "scripts/install-node.sh"
     },
     {
