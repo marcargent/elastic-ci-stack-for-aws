@@ -48,7 +48,7 @@
     },
     {
       "type": "shell",
-      "script": "scripts/install-awslogs.sh"
+      "script": "scripts/install-cloudwatch-agent.sh"
     },
     {
       "type": "shell",
@@ -80,9 +80,26 @@
     },
     {
       "type": "shell",
+      "script": "scripts/install-secrets-manager-hooks.sh"
+    },
+    {
+      "type": "shell",
+      "script": "scripts/install-node.sh"
+    },
+    {
+      "type": "shell",
+      "script": "scripts/install-adoptopenjdk.sh"
+    },
+    {
+        "type": "shell",
+        "script": "scripts/install-session-manager-plugin.sh"
+    },
+    {
+      "type": "shell",
       "inline": [
         "rm /home/ec2-user/.ssh/authorized_keys"
       ]
     }
   ]
 }
+

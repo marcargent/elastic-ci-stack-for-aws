@@ -1,5 +1,4 @@
 #!/bin/bash
-
 set -eu -o pipefail
 
 # clean up our temporary docker config
