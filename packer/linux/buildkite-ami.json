@@ -72,11 +72,7 @@
     },
     {
       "type": "shell",
-      "script": "scripts/install-node.sh"
-    },
-    {
-      "type": "shell",
-      "script": "scripts/install-adoptopenjdk.sh"
+      "script": "scripts/install-session-manager-plugin.sh"
     },
     {
       "type": "shell",
@@ -85,10 +81,6 @@
     {
       "type": "shell",
       "script": "scripts/install-adoptopenjdk.sh"
-    },
-    {
-        "type": "shell",
-        "script": "scripts/install-session-manager-plugin.sh"
     },
     {
       "type": "shell",
