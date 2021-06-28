@@ -51,6 +51,7 @@ Metadata:
         - RootVolumeType
         - ManagedPolicyARN
         - InstanceRoleName
+        - IMDSv2Tokens
 
       - Label:
           default: Auto-scaling Configuration
@@ -90,7 +91,7 @@ Metadata:
 
 Parameters:
   KeyName:
-    Description: Optional - SSH keypair used to access the buildkite instances, setting this will enable SSH ingress
+    Description: Optional - SSH keypair used to access the buildkite instances via ec2_user, setting this will enable SSH ingress
     Type: String
     Default: ""
 
@@ -109,9 +110,11 @@ Parameters:
     Default: ""
 
   BuildkiteAgentTokenParameterStorePath:
-    Description: AWS SSM path to the Buildkite agent registration token (this takes precedence over BuildkiteAgentToken)
+    Description: AWS SSM path to the Buildkite agent registration token (this takes precedence over BuildkiteAgentToken). Expects a leading slash ('/').
     Type: String
     Default: ""
+    AllowedPattern: "^$|^/[a-zA-Z0-9_.\\-/]+$"
+    ConstraintDescription: "Expects a leading forward slash"
 
   BuildkiteAgentTokenParameterStoreKMSKey:
     Description: AWS KMS key ID used to encrypt the SSM parameter (if encrypted)
@@ -185,7 +188,7 @@ Parameters:
     Default: ""
 
   AuthorizedUsersUrl:
-    Description: Optional - HTTPS or S3 URL to periodically download ssh authorized_keys from, setting this will enable SSH ingress
+    Description: Optional - HTTPS or S3 URL to periodically download ssh authorized_keys from, setting this will enable SSH ingress. authorized_keys are applied to ec2_user
     Type: String
     Default: ""
 
@@ -294,9 +297,22 @@ Parameters:
     Description: Optional - Comma separated list of managed IAM policy ARNs to attach to the instance role
     Default: ""
 
+  IMDSv2Tokens:
+    Type: String
+    Description: Whether IMDSv2 tokens must be used for the Instance Metadata Service.
+    AllowedValues:
+      - optional
+      - required
+    Default: optional
+
   InstanceRoleName:
     Type: String
     Description: Optional - A name for the IAM Role attached to the Instance Profile
+    Default: ""
+
+  InstanceRolePermissionsBoundaryARN:
+    Type: String
+    Description: The ARN of the policy used to set the permissions boundary for the role.
     Default: ""
 
   InstanceOperatingSystem:
@@ -376,7 +392,7 @@ Parameters:
   CostAllocationTagName:
     Type: String
     Description: The name of the Cost Allocation Tag used for billing purposes
-    Default: "aws:createdBy"
+    Default: "CreatedBy"
 
   CostAllocationTagValue:
     Type: String
@@ -431,10 +447,15 @@ Conditions:
       !Equals [ !Ref SecurityGroupId, "" ]
 
     CreateSecretsBucket:
-      !Equals [ !Ref SecretsBucket, "" ]
+      !And
+         - !Equals [ !Ref EnableSecretsPlugin, "true"]
+         - !Equals [ !Ref SecretsBucket, "" ]
 
     SetInstanceRoleName:
       !Not [ !Equals [ !Ref InstanceRoleName, "" ] ]
+
+    SetInstanceRolePermissionsBoundaryARN:
+      !Not [ !Equals [ !Ref InstanceRolePermissionsBoundaryARN, "" ] ]
 
     UseSpecifiedSecretsBucket:
       !Not [ !Equals [ !Ref SecretsBucket, "" ] ]
@@ -647,6 +668,7 @@ Resources:
     Type: AWS::IAM::Role
     Properties:
       RoleName: !If [ SetInstanceRoleName, !Ref InstanceRoleName, !Sub "${AWS::StackName}-Role" ]
+      PermissionsBoundary: !If [ SetInstanceRolePermissionsBoundaryARN, !Ref InstanceRolePermissionsBoundaryARN, !Ref "AWS::NoValue" ]
       ManagedPolicyArns: !If
           - HasManagedPolicies
           # Support multiple policies to attach by merging the values together and splitting on ','
@@ -718,12 +740,6 @@ Resources:
               - logs:PutLogEvents
               - logs:DescribeLogStreams
             Resource: "*"
-          - Effect: Allow
-            Action:
-              - sqs:*
-              - sns:Unsubscribe
-              - sns:Subscribe
-            Resource: "*"
       Roles:
         - !Ref IAMRole
 
@@ -766,7 +782,6 @@ Resources:
           - Effect: Allow
             Action:
               - s3:Get*
-              - s3:Get
               - s3:List*
             Resource:
               - !Sub "arn:aws:s3:::${ManagedSecretsBucket}/*"
@@ -784,7 +799,6 @@ Resources:
           - Effect: Allow
             Action:
               - s3:Get*
-              - s3:Get
               - s3:List*
             Resource:
               - !Sub "arn:aws:s3:::${SecretsBucket}/*"
@@ -835,6 +849,10 @@ Resources:
           IamInstanceProfile:
             Arn: !GetAtt "IAMInstanceProfile.Arn"
           InstanceType: !Select [ "0", !Split [ ",", !Join [ ",", [ !Ref InstanceType, "", "", "" ] ] ] ]
+          MetadataOptions:
+            HttpTokens: !Ref IMDSv2Tokens
+            # Allow containers using a Docker network on the host to receive IDMSv2 responses
+            HttpPutResponseHopLimit: 2
           ImageId: !If
             - HasImageId
             - !Ref ImageId
@@ -1008,6 +1026,7 @@ Resources:
   AsgProcessSuspenderRole:
     Type: AWS::IAM::Role
     Properties:
+      PermissionsBoundary: !If [ SetInstanceRolePermissionsBoundaryARN, !Ref InstanceRolePermissionsBoundaryARN, !Ref "AWS::NoValue" ]
       AssumeRolePolicyDocument:
         Version: 2012-10-17
         Statement:
@@ -1084,6 +1103,7 @@ Resources:
     Type: AWS::IAM::Role
     Condition: HasVariableSize
     Properties:
+      PermissionsBoundary: !If [ SetInstanceRolePermissionsBoundaryARN, !Ref InstanceRolePermissionsBoundaryARN, !Ref "AWS::NoValue" ]
       Path: "/"
       AssumeRolePolicyDocument:
         Version: '2012-10-17'
@@ -1152,7 +1172,7 @@ Resources:
     Properties:
       Code:
         S3Bucket: { 'Fn::FindInMap': [LambdaBucket, !Ref 'AWS::Region', 'Bucket'] }
-        S3Key: "buildkite-agent-scaler/v1.0.2/handler.zip"
+        S3Key: "buildkite-agent-scaler/v1.1.1/handler.zip"
       Role: !GetAtt AutoscalingLambdaExecutionRole.Arn
       Timeout: 120
       Handler: handler

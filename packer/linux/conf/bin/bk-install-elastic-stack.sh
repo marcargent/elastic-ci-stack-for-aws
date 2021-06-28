@@ -12,8 +12,9 @@ on_error() {
 	local errorLine="$1"
 
 	if [[ $exitCode != 0 ]] ; then
+	  TOKEN=$(curl -X PUT "http://169.254.169.254/latest/api/token" -H "X-aws-ec2-metadata-token-ttl-seconds: 60")
 		aws autoscaling set-instance-health \
-			--instance-id "$(curl http://169.254.169.254/latest/meta-data/instance-id)" \
+			--instance-id "$(curl -H "X-aws-ec2-metadata-token: $TOKEN" http://169.254.169.254/latest/meta-data/instance-id)" \
 			--health-status Unhealthy || true
 	fi
 
@@ -29,20 +30,6 @@ trap 'on_error $LINENO' ERR
 
 INSTANCE_ID=$(/opt/aws/bin/ec2-metadata --instance-id | cut -d " " -f 2)
 DOCKER_VERSION=$(docker --version | cut -f3 -d' ' | sed 's/,//')
-
-# Cloudwatch logs needs a region specifically configured
-cat << EOF > /etc/awslogs/awscli.conf
-[plugins]
-cwlogs = cwlogs
-[default]
-region = $AWS_REGION
-EOF
-
-systemctl enable awslogsd.service
-
-# Start logging daemons as soon as possible to ensure failures in this script get sent
-systemctl restart rsyslog
-systemctl restart awslogsd
 
 PLUGINS_ENABLED=()
 [[ $SECRETS_PLUGIN_ENABLED == "true" ]] && PLUGINS_ENABLED+=("secrets")
@@ -114,7 +101,7 @@ if [[ -n "${BUILDKITE_AGENT_TOKEN_PATH}" ]] ; then
 fi
 
 cat << EOF > /etc/buildkite-agent/buildkite-agent.cfg
-name="${BUILDKITE_STACK_NAME}-${INSTANCE_ID}-%n"
+name="${BUILDKITE_STACK_NAME}-${INSTANCE_ID}-%spawn"
 token="${BUILDKITE_AGENT_TOKEN}"
 tags=$(IFS=, ; echo "${agent_metadata[*]}")
 tags-from-ec2=true
