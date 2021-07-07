@@ -104,7 +104,7 @@ cat << EOF > /etc/buildkite-agent/buildkite-agent.cfg
 name="${BUILDKITE_STACK_NAME}-${INSTANCE_ID}-%spawn"
 token="${BUILDKITE_AGENT_TOKEN}"
 tags=$(IFS=, ; echo "${agent_metadata[*]}")
-tags-from-ec2=true
+tags-from-ec2-meta-data=true
 tags-from-host=true
 timestamp-lines=${BUILDKITE_AGENT_TIMESTAMP_LINES}
 hooks-path=/etc/buildkite-agent/hooks
@@ -112,7 +112,7 @@ build-path=/var/lib/buildkite-agent/builds
 plugins-path=/var/lib/buildkite-agent/plugins
 git-mirrors-path="${BUILDKITE_AGENT_GIT_MIRRORS_PATH}"
 experiment="${BUILDKITE_AGENT_EXPERIMENTS}"
-priority=%n
+priority=%spawn
 spawn=${BUILDKITE_AGENTS_PER_INSTANCE}
 no-color=true
 disconnect-after-idle-timeout=${BUILDKITE_SCALE_IN_IDLE_PERIOD}
